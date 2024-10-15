@@ -633,7 +633,7 @@ export class ChannelStartupService {
         : this.createJid(query.where?.remoteJid)
       : null;
 
-    const results = await this.prismaRepository.$queryRaw`
+      const results = await this.prismaRepository.$queryRaw`
       WITH RankedMessages AS (
         SELECT
           "Message"."id",
@@ -684,9 +684,27 @@ export class ChannelStartupService {
       GROUP BY
         "Chat"."id",
         "Chat"."remoteJid",
-        "Contact"."id"
+        "Chat"."name",
+        "Chat"."labels",
+        "Chat"."createdAt",
+        "Chat"."updatedAt",
+        "Contact"."pushName",
+        "Contact"."profilePicUrl",
+        "Chat"."unreadMessages",
+        rm."id",
+        rm."key",
+        rm."pushName",
+        rm."participant",
+        rm."messageType",
+        rm."message",
+        rm."contextInfo",
+        rm."source",
+        rm."messageTimestamp",
+        rm."instanceId",
+        rm."sessionId",
+        rm."status"
       ORDER BY "lastMessageTimestamp" DESC NULLS LAST, "Chat"."updatedAt" DESC
-      ${skip ? Prisma.sql`LIMIT ${query?.limit} OFFSET ${skip}`: Prisma.empty} 
+      ${skip ? Prisma.sql`LIMIT ${query?.limit} OFFSET ${skip}` : Prisma.empty}
     `;
 
     if (results && isArray(results) && results.length > 0) {
