@@ -661,14 +661,16 @@ export class ChannelStartupService {
       WHERE
         "Chat"."instanceId" = ${this.instanceId} 
         ${remoteJid ? Prisma.sql`AND "Chat"."remoteJid" = ${remoteJid}` : Prisma.empty}
-        ${limit && cursor ? Prisma.sql`AND (ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] < ${cursor}` : Prisma.empty}
       GROUP BY
         "Chat"."id",
         "Chat"."remoteJid",
         "Contact"."id"
+      HAVING
+        ${limit && cursor ? Prisma.sql`(ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] < ${cursor}` : Prisma.empty}
       ORDER BY last_message_message_timestamp DESC NULLS LAST, "Chat"."updatedAt" DESC
-      ${limit ? Prisma.sql`LIMIT ${limit}`:Prisma.empty}
+      ${limit ? Prisma.sql`LIMIT ${limit}` : Prisma.empty}
     `;
+    
 
       
     if (results && isArray(results) && results.length > 0) {
