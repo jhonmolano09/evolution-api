@@ -625,7 +625,6 @@ export class ChannelStartupService {
 
     const page = query?.page ? Math.max(1, query.page) : 1;
     const skip = query?.limit ? (page - 1) * query.limit : null;
-    console.log('DEBUG-FETCH_CHATS', { query, page, skip });
 
     const remoteJid = query?.where?.remoteJid
       ? query?.where?.remoteJid.includes('@')
@@ -682,6 +681,7 @@ export class ChannelStartupService {
           pushName: chat.pushName,
           profilePicUrl: chat.profilePicUrl,
           unreadMessages: chat.unreadMessages,
+          skip,
           lastMessage: chat.last_message_id
             ? {
               id: chat.last_message_id,
