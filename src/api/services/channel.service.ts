@@ -623,8 +623,8 @@ export class ChannelStartupService {
 
   public async fetchChats(query: any) {
 
-    const page = query?.page ? Math.max(1, query.page): 1; 
-    const skip = query?.limit ? (page - 1) * query.limit : null; 
+    const page = query?.page ? Math.max(1, query.page) : 1;
+    const skip = query?.limit ? (page - 1) * query.limit : null;
 
 
     const remoteJid = query?.where?.remoteJid
@@ -633,80 +633,45 @@ export class ChannelStartupService {
         : this.createJid(query.where?.remoteJid)
       : null;
 
-      const results = await this.prismaRepository.$queryRaw`
-      WITH RankedMessages AS (
-        SELECT
-          "Message"."id",
-          "Message"."key",
-          "Message"."key"->>'remoteJid' AS "remoteJid",
-          "Message"."pushName",
-          "Message"."participant",
-          "Message"."messageType",
-          "Message"."message",
-          "Message"."contextInfo",
-          "Message"."source",
-          "Message"."messageTimestamp",
-          "Message"."instanceId",
-          "Message"."sessionId",
-          "Message"."status",
-          ROW_NUMBER() OVER (PARTITION BY "Message"."key"->>'remoteJid' ORDER BY "Message"."messageTimestamp" DESC) AS rn
-        FROM "Message"
-        WHERE "Message"."messageType" != 'reactionMessage'
-      )
-      SELECT
-        "Chat"."id" AS "chatId",
-        "Chat"."remoteJid" AS "chatRemoteJid",
-        "Chat"."name" AS "chatName",
-        "Chat"."labels" AS "chatLabels",
-        "Chat"."createdAt" AS "chatCreatedAt",
-        "Chat"."updatedAt" AS "chatUpdatedAt",
-        "Contact"."pushName" AS "contactPushName",
-        "Contact"."profilePicUrl" AS "contactProfilePicUrl",
-        "Chat"."unreadMessages" AS "chatUnreadMessages",
-        rm."id" AS "lastMessageId",
-        rm."key" AS "lastMessageKey",
-        rm."pushName" AS "lastMessagePushName",
-        rm."participant" AS "lastMessageParticipant",
-        rm."messageType" AS "lastMessageType",
-        rm."message" AS "lastMessage",
-        rm."contextInfo" AS "lastMessageContextInfo",
-        rm."source" AS "lastMessageSource",
-        rm."messageTimestamp" AS "lastMessageTimestamp",
-        rm."instanceId" AS "lastMessageInstanceId",
-        rm."sessionId" AS "lastMessageSessionId",
-        rm."status" AS "lastMessageStatus"
-      FROM "Chat"
-      LEFT JOIN RankedMessages rm ON rm."remoteJid" = "Chat"."remoteJid" AND rm.rn = 1
-      LEFT JOIN "Contact" ON "Chat"."remoteJid" = "Contact"."remoteJid"
-      WHERE
-        "Chat"."instanceId" = ${this.instanceId} 
-        ${remoteJid ? Prisma.sql`AND "Chat"."remoteJid" = ${remoteJid}` : Prisma.empty}
-      GROUP BY
-        "Chat"."id",
-        "Chat"."remoteJid",
-        "Chat"."name",
-        "Chat"."labels",
-        "Chat"."createdAt",
-        "Chat"."updatedAt",
-        "Contact"."pushName",
-        "Contact"."profilePicUrl",
-        "Chat"."unreadMessages",
-        rm."id",
-        rm."key",
-        rm."pushName",
-        rm."participant",
-        rm."messageType",
-        rm."message",
-        rm."contextInfo",
-        rm."source",
-        rm."messageTimestamp",
-        rm."instanceId",
-        rm."sessionId",
-        rm."status"
-      ORDER BY "lastMessageTimestamp" DESC NULLS LAST, "Chat"."updatedAt" DESC
-      ${skip ? Prisma.sql`LIMIT ${query?.limit} OFFSET ${skip}` : Prisma.empty}
-    `;
-
+      const results = await this.prismaRepository.$queryRaw(
+        Prisma.sql.raw(`
+          SELECT
+            "Chat"."id",
+            "Chat"."remoteJid",
+            "Chat"."name",
+            "Chat"."labels",
+            "Chat"."createdAt",
+            "Chat"."updatedAt",
+            "Contact"."pushName",
+            "Contact"."profilePicUrl",
+            "Chat"."unreadMessages",
+            (ARRAY_AGG("Message"."id" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_id,
+            (ARRAY_AGG("Message"."key" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_key,
+            (ARRAY_AGG("Message"."pushName" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_push_name,
+            (ARRAY_AGG("Message"."participant" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_participant,
+            (ARRAY_AGG("Message"."messageType" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message_type,
+            (ARRAY_AGG("Message"."message" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message,
+            (ARRAY_AGG("Message"."contextInfo" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_context_info,
+            (ARRAY_AGG("Message"."source" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_source,
+            (ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message_timestamp,
+            (ARRAY_AGG("Message"."instanceId" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_instance_id,
+            (ARRAY_AGG("Message"."sessionId" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_session_id,
+            (ARRAY_AGG("Message"."status" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_status
+          FROM "Chat"
+          LEFT JOIN "Message" ON "Message"."messageType" != 'reactionMessage' AND "Message"."key"->>'remoteJid' = "Chat"."remoteJid"
+          LEFT JOIN "Contact" ON "Chat"."remoteJid" = "Contact"."remoteJid"
+          WHERE
+            "Chat"."instanceId" = ${this.instanceId} 
+            ${remoteJid ? Prisma.sql`AND "Chat"."remoteJid" = ${remoteJid}` : Prisma.empty}
+          GROUP BY
+            "Chat"."id",
+            "Chat"."remoteJid",
+            "Contact"."id"
+          ORDER BY last_message_message_timestamp DESC NULLS LAST, "Chat"."updatedAt" DESC
+          ${skip ? Prisma.sql`LIMIT ${query?.limit} OFFSET ${skip}` : Prisma.empty}
+        `)
+      );
+      
     if (results && isArray(results) && results.length > 0) {
       return results.map((chat) => {
         return {
