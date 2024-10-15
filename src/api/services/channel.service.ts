@@ -623,56 +623,56 @@ export class ChannelStartupService {
 
   public async fetchChats(query: any) {
     const limit = query?.limit ? Math.max(1, query.limit) : null;
-    const cursor = query?.cursor; 
+    const cursor = query?.cursor;
 
-    
+
     const remoteJid = query?.where?.remoteJid
       ? query?.where?.remoteJid.includes('@')
         ? query.where?.remoteJid
         : this.createJid(query.where?.remoteJid)
       : null;
 
-      const results = await this.prismaRepository.$queryRaw`
-      SELECT
-        "Chat"."id",
-        "Chat"."remoteJid",
-        "Chat"."name",
-        "Chat"."labels",
-        "Chat"."createdAt",
-        "Chat"."updatedAt",
-        "Contact"."pushName",
-        "Contact"."profilePicUrl",
-        "Chat"."unreadMessages",
-        (ARRAY_AGG("Message"."id" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_id,
-        (ARRAY_AGG("Message"."key" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_key,
-        (ARRAY_AGG("Message"."pushName" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_push_name,
-        (ARRAY_AGG("Message"."participant" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_participant,
-        (ARRAY_AGG("Message"."messageType" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message_type,
-        (ARRAY_AGG("Message"."message" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message,
-        (ARRAY_AGG("Message"."contextInfo" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_context_info,
-        (ARRAY_AGG("Message"."source" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_source,
-        (ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message_timestamp,
-        (ARRAY_AGG("Message"."instanceId" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_instance_id,
-        (ARRAY_AGG("Message"."sessionId" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_session_id,
-        (ARRAY_AGG("Message"."status" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_status
-      FROM "Chat"
-      LEFT JOIN "Message" ON "Message"."messageType" != 'reactionMessage' AND "Message"."key"->>'remoteJid' = "Chat"."remoteJid"
-      LEFT JOIN "Contact" ON "Chat"."remoteJid" = "Contact"."remoteJid"
-      WHERE
-        "Chat"."instanceId" = ${this.instanceId} 
-        ${remoteJid ? Prisma.sql`AND "Chat"."remoteJid" = ${remoteJid}` : Prisma.empty}
-      GROUP BY
-        "Chat"."id",
-        "Chat"."remoteJid",
-        "Contact"."id"
-      HAVING
-        ${limit && cursor ? Prisma.sql`(ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] < ${cursor}` : Prisma.empty}
-      ORDER BY last_message_message_timestamp DESC NULLS LAST, "Chat"."updatedAt" DESC
-      ${limit ? Prisma.sql`LIMIT ${limit}` : Prisma.empty}
-    `;
-    
+    const results = await this.prismaRepository.$queryRaw`
+    SELECT
+      "Chat"."id",
+      "Chat"."remoteJid",
+      "Chat"."name",
+      "Chat"."labels",
+      "Chat"."createdAt",
+      "Chat"."updatedAt",
+      "Contact"."pushName",
+      "Contact"."profilePicUrl",
+      "Chat"."unreadMessages",
+      (ARRAY_AGG("Message"."id" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_id,
+      (ARRAY_AGG("Message"."key" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_key,
+      (ARRAY_AGG("Message"."pushName" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_push_name,
+      (ARRAY_AGG("Message"."participant" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_participant,
+      (ARRAY_AGG("Message"."messageType" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message_type,
+      (ARRAY_AGG("Message"."message" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message,
+      (ARRAY_AGG("Message"."contextInfo" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_context_info,
+      (ARRAY_AGG("Message"."source" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_source,
+      (ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_message_timestamp,
+      (ARRAY_AGG("Message"."instanceId" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_instance_id,
+      (ARRAY_AGG("Message"."sessionId" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_session_id,
+      (ARRAY_AGG("Message"."status" ORDER BY "Message"."messageTimestamp" DESC))[1] AS last_message_status
+    FROM "Chat"
+    LEFT JOIN "Message" ON "Message"."messageType" != 'reactionMessage' AND "Message"."key"->>'remoteJid' = "Chat"."remoteJid"
+    LEFT JOIN "Contact" ON "Chat"."remoteJid" = "Contact"."remoteJid"
+    WHERE
+      "Chat"."instanceId" = ${this.instanceId} 
+      ${remoteJid ? Prisma.sql`AND "Chat"."remoteJid" = ${remoteJid}` : Prisma.empty}
+    GROUP BY
+      "Chat"."id",
+      "Chat"."remoteJid",
+      "Contact"."id"
+    ${limit && cursor ? Prisma.sql`HAVING (ARRAY_AGG("Message"."messageTimestamp" ORDER BY "Message"."messageTimestamp" DESC))[1] < ${cursor}` : Prisma.empty}
+    ORDER BY last_message_message_timestamp DESC NULLS LAST, "Chat"."updatedAt" DESC
+    ${limit ? Prisma.sql`LIMIT ${limit}` : Prisma.empty}
+`;
 
-      
+
+
+
     if (results && isArray(results) && results.length > 0) {
       return results.map((chat) => {
         return {
