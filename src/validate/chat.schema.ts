@@ -198,6 +198,8 @@ export const contactValidateSchema: JSONSchema7 = {
       },
       ...isNotEmpty('_id', 'id', 'pushName'),
     },
+    limit: { type: 'integer' },
+    page: { type: 'integer' },
   },
 };
 
