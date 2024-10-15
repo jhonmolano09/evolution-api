@@ -681,6 +681,7 @@ export class ChannelStartupService {
           pushName: chat.pushName,
           profilePicUrl: chat.profilePicUrl,
           unreadMessages: chat.unreadMessages,
+          limit: query.limit,
           skip,
           lastMessage: chat.last_message_id
             ? {
