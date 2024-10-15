@@ -637,6 +637,7 @@ export class ChannelStartupService {
       WITH RankedMessages AS (
         SELECT
           "Message"."id",
+          "Message"."key",
           "Message"."key"->>'remoteJid' AS "remoteJid",
           "Message"."pushName",
           "Message"."participant",
