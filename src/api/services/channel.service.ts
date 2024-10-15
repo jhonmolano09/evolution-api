@@ -633,8 +633,7 @@ export class ChannelStartupService {
         : this.createJid(query.where?.remoteJid)
       : null;
 
-      const results = await this.prismaRepository.$queryRaw(
-        Prisma.sql.raw(`
+      const results = await this.prismaRepository.$queryRaw`
           SELECT
             "Chat"."id",
             "Chat"."remoteJid",
@@ -669,8 +668,7 @@ export class ChannelStartupService {
             "Contact"."id"
           ORDER BY last_message_message_timestamp DESC NULLS LAST, "Chat"."updatedAt" DESC
           ${skip ? Prisma.sql`LIMIT ${query?.limit} OFFSET ${skip}` : Prisma.empty}
-        `)
-      );
+        `;
       
     if (results && isArray(results) && results.length > 0) {
       return results.map((chat) => {
