@@ -54,3 +54,4 @@ networks:
   evolution-net:
     name: evolution-net
     driver: bridge
+    external: true
